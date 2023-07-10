@@ -14,3 +14,9 @@ var (
 func GetShortenedVersion() string {
 	return strings.Split(version, "~")[0]
 }
+
+
+// GetFullVersion returns the full program version
+func GetFullVersion() string {
+	return version
+}

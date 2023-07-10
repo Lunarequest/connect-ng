@@ -30,6 +30,9 @@ connect-ruby:
 gofmt:
 	@if [ ! -z "$$(gofmt -l ./)" ]; then echo "Formatting errors..."; gofmt -d ./; exit 1; fi
 
+build-connectd:
+	go build -v -o out/ github.com/SUSE/connect-ng/connectd
+
 build-so: out internal/connect/version.txt
 	go build -v -buildmode=c-shared -o out/libsuseconnect.so github.com/SUSE/connect-ng/libsuseconnect
 
