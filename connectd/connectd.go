@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -19,11 +20,26 @@ const intro = `
 		</method>
 		<method name="Status">
 			<arg direction="in" type="s" />
-			<arg directino="out" type="s" />
+			<arg direction="out" type="s" />
+		</method>
+		<method name="DeactivateSytem">
+			<arg direction="in" type="s" />
+			<arg direction="out" type="s" />
 		</method>
 	</interface>` + introspect.IntrospectDataString + `</node>`
 
 type Connectd string
+
+func loadConfig(clientParams string) {
+	// unmarshal extra config fields only for local use
+	var extConfig struct {
+		Debug string `json:"debug"`
+	}
+	json.Unmarshal([]byte(clientParams), &extConfig)
+	connect.CFG.Load()
+	connect.CFG.MergeJSON(clientParams)
+}
+
 
 func (f Connectd) Version(fullVersion bool) (string, *dbus.Error) {
 	var version string
@@ -43,6 +59,16 @@ func (f Connectd) Status(format string) (string, *dbus.Error) {
 		return output, dbus.MakeFailedError(err)
 	}
 	return output, nil
+}
+
+func DeactivateSytem(clientParams string) (string) {
+	loadConfig(clientParams)
+	err := connect.DeregisterSystem()
+
+	if err != nil {
+		return errorToJSON(err)
+	}
+	return "{}"
 }
 
 func main() {

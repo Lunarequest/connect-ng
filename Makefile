@@ -1,4 +1,4 @@
-all: test build build-so
+all: test build build-so build-connectd
 
 out:
 	mkdir -p out
