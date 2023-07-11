@@ -10,24 +10,6 @@ import (
 	"github.com/godbus/dbus/v5/introspect"
 )
 
-
-const intro = `
-<node>
-	<interface name="com.suse.Connect">
-		<method name="Version">
-			<arg direction="in" type="b"/>
-			<arg direction="out" type="s"/>
-		</method>
-		<method name="Status">
-			<arg direction="in" type="s" />
-			<arg direction="out" type="s" />
-		</method>
-		<method name="DeactivateSytem">
-			<arg direction="in" type="s" />
-			<arg direction="out" type="s" />
-		</method>
-	</interface>` + introspect.IntrospectDataString + `</node>`
-
 type Connectd string
 
 func loadConfig(clientParams string) {
@@ -40,6 +22,63 @@ func loadConfig(clientParams string) {
 	connect.CFG.MergeJSON(clientParams)
 }
 
+func (f Connectd) AnnounceSystem(clientParams, distroTarget string) string {
+	loadConfig(clientParams)
+
+	login, password, err := connect.AnnounceSystem(distroTarget, "")
+	if err != nil {
+		return errorToJSON(err)
+	}
+	var res struct {
+		Credentials []string `json:"credentials"`
+	}
+	res.Credentials = []string{login, password, ""}
+	jsn, _ := json.Marshal(&res)
+
+	return string(jsn)
+}
+
+func (f Connectd) UpdateSystem(clientParams, distroTarget string) string {
+	loadConfig(clientParams)
+
+	if err := connect.UpdateSystem(distroTarget, ""); err != nil {
+		return errorToJSON(err)
+	}
+	return "{}"
+}
+
+func (f Connectd) DeactivateSytem(clientParams string) string {
+	loadConfig(clientParams)
+
+	if err := connect.DeregisterSystem(); err != nil {
+		return errorToJSON(err)
+	}
+	return "{}"
+}
+
+func Credentials(path string) string {
+	creds, err := connect.ReadCredentials(path)
+	if err != nil {
+		return errorToJSON(err)
+	}
+
+	jsn, _ := json.Marshal(creds)
+
+	return string(jsn)
+}
+
+func (f Connectd) CreateCredentialsFile(login, password, token, path string) string {
+	if err:=connect.CreateCredentials(login, password, token, path); err!=nil {
+		return errorToJSON(err)
+	}
+	return "{}"
+}
+
+func (f Connectd) CurlrcCredentials() string {
+	creds, _ := connect.ReadCurlrcCredentials()
+	jsn, _:= json.Marshal(creds)
+	return string(jsn)
+}
 
 func (f Connectd) Version(fullVersion bool) (string, *dbus.Error) {
 	var version string
@@ -61,16 +100,6 @@ func (f Connectd) Status(format string) (string, *dbus.Error) {
 	return output, nil
 }
 
-func DeactivateSytem(clientParams string) (string) {
-	loadConfig(clientParams)
-	err := connect.DeregisterSystem()
-
-	if err != nil {
-		return errorToJSON(err)
-	}
-	return "{}"
-}
-
 func main() {
 	conn, err := dbus.ConnectSessionBus()
 	if err != nil {
@@ -80,7 +109,7 @@ func main() {
 	f := Connectd("Connectd")
 	conn.Export(f, "/com/suse/Connect", "com.suse.Connect")
 	conn.Export(introspect.Introspectable(intro), "/com/suse/Connect",
-	"org.freedesktop.DBus.Introspectable")
+		"org.freedesktop.DBus.Introspectable")
 
 	reply, err := conn.RequestName("com.suse.Connect", dbus.NameFlagDoNotQueue)
 
@@ -89,7 +118,7 @@ func main() {
 
 	}
 
-	if reply !=  dbus.RequestNameReplyPrimaryOwner {
+	if reply != dbus.RequestNameReplyPrimaryOwner {
 		fmt.Fprintln(os.Stderr, "name already taken")
 		os.Exit(1)
 	}
